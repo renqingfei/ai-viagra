@@ -1,0 +1,49 @@
+{
+  "name": "ai-weige",
+  "displayName": "AI伟哥",
+  "description": "Show MCP tool prompts in a VSCode webview and return user input to the AI.",
+  "version": "0.0.1",
+  "publisher": "aiweige",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://example.invalid/aiweige/ai-weige.git"
+  },
+  "scripts": {
+    "check": "node --check extension.js && node --check mcp-server.js",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.2"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:mcpUi.openPanel",
+    "onCommand:mcpUi.copyBridgePort",
+    "onCommand:mcpUi.clearPanel"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mcpUi.openPanel",
+        "title": "AI伟哥: 打开面板"
+      },
+      {
+        "command": "mcpUi.copyBridgePort",
+        "title": "AI伟哥: 复制桥接端口"
+      },
+      {
+        "command": "mcpUi.clearPanel",
+        "title": "AI伟哥: 清空面板"
+      }
+    ]
+  }
+}
+
