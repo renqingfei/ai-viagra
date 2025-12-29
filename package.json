@@ -1,81 +1,44 @@
 {
-  "name": "ai-weige",
-  "displayName": "AI伟哥",
-  "description": "Show MCP tool prompts in a VSCode webview and return user input to the AI.",
-  "version": "0.0.1",
-  "publisher": "aiweige",
-  "license": "MIT",
+  "name": "trae-mcp-plugin",
+  "displayName": "Trae MCP Plugin",
+  "description": "An MCP plugin for Trae with configuration page and feedback dialog",
   "repository": {
     "type": "git",
-    "url": "https://example.invalid/aiweige/ai-weige.git"
+    "url": "https://github.com/example/trae-mcp-plugin"
   },
-  "scripts": {
-    "check": "node --check extension.js && node --check mcp-server.js",
-    "pack": "powershell -ExecutionPolicy Bypass -File .\\\\pack.ps1",
-    "package": "npx @vscode/vsce package --no-dependencies"
-  },
-  "devDependencies": {
-    "@vscode/vsce": "^3.2.2"
-  },
+  "version": "0.1.0",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Other"
   ],
-  "main": "./extension.js",
-  "activationEvents": [
-    "onStartupFinished",
-    "onView:aiWeigeView",
-    "onView:aiWeigeSettingsView",
-    "onCommand:mcpUi.openPanel",
-    "onCommand:mcpUi.clearPanel"
-  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "mcpUi.openPanel",
-        "title": "AI伟哥: 打开面板"
-      },
-      {
-        "command": "mcpUi.clearPanel",
-        "title": "AI伟哥: 清空面板"
+        "command": "trae-mcp-plugin.showConfig",
+        "title": "Trae MCP: Show Configuration"
       }
-    ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "aiWeigeActivity",
-          "title": "AI伟哥",
-          "icon": "resources/aiweige.svg"
-        }
-      ]
-    },
-    "views": {
-      "aiWeigeActivity": [
-        {
-          "type": "webview",
-          "id": "aiWeigeSettingsView",
-          "name": "设置"
-        }
-      ],
-      "panel": [
-        {
-          "type": "webview",
-          "id": "aiWeigeView",
-          "name": "AI伟哥"
-        }
-      ]
-    },
-    "configuration": {
-      "title": "AI伟哥",
-      "properties": {
-        "aiWeige.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "启用 AI伟哥 MCP 交互"
-        }
-      }
-    }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "express": "^4.21.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.9.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.7.1",
+    "typescript": "^5.6.3"
   }
 }
