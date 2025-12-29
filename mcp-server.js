@@ -119,98 +119,71 @@ function getBridgeConfig() {
   return { host, port };
 }
 
-function toolAskSpec() {
+function toolAiViagraSpec() {
   return {
-    name: "vscode_ui.ask",
-    description: "Show a message in VSCode and wait for the user's input (with optional multi-select options and attachments).",
+    name: "ai-viagra",
+    description: "在 VSCode 里展示消息并等待用户输入（支持预设选项与附件）。",
     inputSchema: {
       type: "object",
       additionalProperties: false,
       properties: {
-        title: { type: "string", description: "Title shown in the UI (optional)." },
-        text: { type: "string", description: "Message content shown to the user." },
-        timeoutMs: { type: "number", description: "How long to wait for the user (ms). Default: 10 minutes." },
-        options: {
+        message: { type: "string", description: "展示给用户的消息内容。" },
+        is_markdown: { type: "boolean", description: "message 是否为 Markdown。默认 true。" },
+        predefined_options: {
           type: "array",
-          description: "Options shown to the user (multi-select).",
-          items: {
-            oneOf: [
-              { type: "string" },
-              {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string" },
-                  value: { type: "string" }
-                },
-                required: ["label"]
-              }
-            ]
-          }
+          description: "预定义选项（可多选）。",
+          items: { type: "string" }
         },
-        acceptAttachments: { type: "boolean", description: "Whether to allow file/image attachments. Default: true." }
+        timeoutMs: { type: "number", description: "等待用户输入超时（ms）。默认 10 分钟。" },
+        acceptAttachments: { type: "boolean", description: "是否允许附件。默认 true。" },
+        title: { type: "string", description: "UI 中显示的标题（可选）。默认 AI伟哥。" }
       },
-      required: ["text"]
-    }
-  };
-}
-
-function toolNotifySpec() {
-  return {
-    name: "vscode_ui.notify",
-    description: "Show a message in VSCode UI (no input).",
-    inputSchema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        title: { type: "string", description: "Title shown in the UI (optional)." },
-        text: { type: "string", description: "Message content shown to the user." }
-      },
-      required: ["text"]
+      required: ["message"]
     }
   };
 }
 
 async function callTool(params) {
   const args = params?.arguments ?? {};
-  const title = typeof args.title === "string" ? args.title : "AI";
-  const text = typeof args.text === "string" ? args.text : "";
+  const title = typeof args.title === "string" ? args.title : "AI伟哥";
+  const text = typeof args.message === "string" ? args.message : "";
+  const isMarkdown = typeof args.is_markdown === "boolean" ? args.is_markdown : true;
   const timeoutMs = typeof args.timeoutMs === "number" ? args.timeoutMs : 10 * 60 * 1000;
-  const options = Array.isArray(args.options)
-    ? args.options
-        .map((x) => {
-          if (typeof x === "string") return x;
-          if (x && typeof x === "object" && typeof x.label === "string") {
-            const value = typeof x.value === "string" ? x.value : x.label;
-            return { label: x.label, value };
-          }
-          return null;
-        })
-        .filter(Boolean)
+  const options = Array.isArray(args.predefined_options)
+    ? args.predefined_options.filter((x) => typeof x === "string" && x)
     : undefined;
   const acceptAttachments = typeof args.acceptAttachments === "boolean" ? args.acceptAttachments : true;
 
   const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const { host, port } = getBridgeConfig();
 
-  const socket = await connectBridge({ host, port, timeoutMs: 1200 });
-  socket.setNoDelay(true);
-  socket.write(JSON.stringify({ type: "show", requestId, title, text, timeoutMs, options, multiSelect: true, acceptAttachments }) + "\n");
-  const replyMsg = await readBridgeReply(socket, requestId, timeoutMs);
-  return replyMsg;
-}
-
-async function notifyTool(params) {
-  const args = params?.arguments ?? {};
-  const title = typeof args.title === "string" ? args.title : "AI";
-  const text = typeof args.text === "string" ? args.text : "";
-  const { host, port } = getBridgeConfig();
-  const socket = await connectBridge({ host, port, timeoutMs: 1200 });
-  socket.setNoDelay(true);
-  socket.write(JSON.stringify({ type: "notify", title, text }) + "\n");
   try {
-    socket.end();
-  } catch {}
+    const socket = await connectBridge({ host, port, timeoutMs: 1200 });
+    socket.setNoDelay(true);
+    socket.write(
+      JSON.stringify({
+        type: "show",
+        requestId,
+        title,
+        text,
+        isMarkdown,
+        timeoutMs,
+        options,
+        multiSelect: true,
+        acceptAttachments
+      }) + "\n"
+    );
+    const replyMsg = await readBridgeReply(socket, requestId, timeoutMs);
+    return replyMsg;
+  } catch {
+    return {
+      type: "reply",
+      requestId,
+      text: "AI伟哥未启用或桥接未启动（请在 VSCode 侧边栏 AI伟哥 · 管理 中开启）。",
+      selectedOptions: [],
+      attachments: []
+    };
+  }
 }
 
 function createFramedReader(onMessage) {
@@ -272,7 +245,7 @@ async function handleRequest(msg) {
           tools: { listChanged: false }
         },
         serverInfo: {
-          name: "ai-weige",
+          name: "ai-viagra",
           version: "0.0.1"
         }
       }
@@ -296,7 +269,7 @@ async function handleRequest(msg) {
       jsonrpc: "2.0",
       id,
       result: {
-        tools: [toolAskSpec(), toolNotifySpec()]
+        tools: [toolAiViagraSpec()]
       }
     });
     return;
@@ -305,24 +278,12 @@ async function handleRequest(msg) {
   if (method === "tools/call") {
     if (id === undefined || id === null) return;
     const toolName = msg?.params?.name;
-    if (toolName !== "vscode_ui.ask" && toolName !== "vscode_ui.notify") {
+    if (toolName !== "ai-viagra") {
       writeError(id, -32602, "Unknown tool", { name: toolName });
       return;
     }
 
     try {
-      if (toolName === "vscode_ui.notify") {
-        await notifyTool(msg.params);
-        writeMessage({
-          jsonrpc: "2.0",
-          id,
-          result: {
-            content: [{ type: "text", text: "" }]
-          }
-        });
-        return;
-      }
-
       const reply = await callTool(msg.params);
       const resultPayload = {
         text: typeof reply?.text === "string" ? reply.text : "",

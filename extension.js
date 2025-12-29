@@ -460,6 +460,7 @@ function buildWebviewHtml({ cspNonce }) {
         </div>
         <div class="right">
           <div class="badge" id="pendingBadge">pending: 0</div>
+          <div class="badge" id="callsBadge">calls: 0</div>
           <select class="reqsel" id="requestSelect" style="display:none;"></select>
           <div class="badge" id="portBadge">port: ?</div>
         </div>
@@ -508,6 +509,7 @@ function buildWebviewHtml({ cspNonce }) {
       const optionsClear = document.getElementById("optionsClear");
       const attachmentsBox = document.getElementById("attachmentsBox");
       const pendingBadge = document.getElementById("pendingBadge");
+      const callsBadge = document.getElementById("callsBadge");
       const requestSelect = document.getElementById("requestSelect");
       const portBadge = document.getElementById("portBadge");
       const subtitle = document.getElementById("subtitle");
@@ -517,6 +519,7 @@ function buildWebviewHtml({ cspNonce }) {
       let selectedOptions = new Set();
       let attachments = [];
       let bridgePort = null;
+      let callCount = 0;
 
       function escapeHtml(s) {
         return String(s)
@@ -560,8 +563,8 @@ function buildWebviewHtml({ cspNonce }) {
         let idx = 0;
 
         const placehold = (match, cls) => {
-          const token = `@@HL_${idx++}@@`;
-          map.set(token, `<span class="${cls}">${match}</span>`);
+          const token = "@@HL_" + (idx++) + "@@";
+          map.set(token, "<span class=\"" + cls + "\">" + match + "</span>");
           return token;
         };
 
@@ -571,28 +574,28 @@ function buildWebviewHtml({ cspNonce }) {
 
         const stringRe = lang === "json"
           ? /"(?:\\.|[^"\\])*"/g
-          : /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g;
+          : /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\\x60(?:\\.|[^\\x60\\\\])*\\x60/g;
 
         s = s.replace(commentRe, (m) => placehold(m, "hl-comment"));
         s = s.replace(stringRe, (m) => placehold(m, "hl-string"));
 
-        s = s.replace(/\b\d+(?:\.\d+)?\b/g, `<span class="hl-number">$&</span>`);
+        s = s.replace(/\b\d+(?:\.\d+)?\b/g, "<span class=\"hl-number\">$&</span>");
 
         const langKey = lang === "typescript" ? "ts" : lang === "javascript" ? "js" : lang;
         const kws = keywordsByLang[langKey] || keywordsByLang.js;
-        const kwRe = new RegExp(`\\\\b(${kws.map((k) => k.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")).join("|")})\\\\b`, "g");
-        s = s.replace(kwRe, `<span class="hl-keyword">$1</span>`);
+        const kwRe = new RegExp("\\\\b(" + kws.map((k) => k.replace(/[.*+?^\\$\\{\\}()|[\\]\\\\]/g, "\\\\$&")).join("|") + ")\\\\b", "g");
+        s = s.replace(kwRe, "<span class=\"hl-keyword\">$1</span>");
 
         const builtins = builtinsByLang[langKey];
         if (builtins && builtins.length) {
-          const biRe = new RegExp(`\\\\b(${builtins.map((k) => k.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")).join("|")})\\\\b`, "g");
-          s = s.replace(biRe, `<span class="hl-builtin">$1</span>`);
+          const biRe = new RegExp("\\\\b(" + builtins.map((k) => k.replace(/[.*+?^\\$\\{\\}()|[\\]\\\\]/g, "\\\\$&")).join("|") + ")\\\\b", "g");
+          s = s.replace(biRe, "<span class=\"hl-builtin\">$1</span>");
         }
 
         const types = typesByLang[langKey];
         if (types && types.length) {
-          const tyRe = new RegExp(`\\\\b(${types.map((k) => k.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")).join("|")})\\\\b`, "g");
-          s = s.replace(tyRe, `<span class="hl-type">$1</span>`);
+          const tyRe = new RegExp("\\\\b(" + types.map((k) => k.replace(/[.*+?^\\$\\{\\}()|[\\]\\\\]/g, "\\\\$&")).join("|") + ")\\\\b", "g");
+          s = s.replace(tyRe, "<span class=\"hl-type\">$1</span>");
         }
 
         for (const [token, html] of map.entries()) {
@@ -616,14 +619,14 @@ function buildWebviewHtml({ cspNonce }) {
           let tokenIdx = 0;
 
           const token = (htmlChunk) => {
-            const t = `@@MD_${tokenIdx++}@@`;
+            const t = "@@MD_" + (tokenIdx++) + "@@";
             tokenMap.set(t, htmlChunk);
             return t;
           };
 
           let s = raw;
-          s = s.replace(/`([^`]+)`/g, (_m, g1) => token(`<code class="inline">${escapeHtml(g1)}</code>`));
-          s = s.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, (_m, t, u) => token(`<a href="${escapeHtml(u)}">${escapeHtml(t)}</a>`));
+          s = s.replace(/\\x60([^\\x60]+)\\x60/g, (_m, g1) => token("<code class=\"inline\">" + escapeHtml(g1) + "</code>"));
+          s = s.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, (_m, t, u) => token("<a href=\"" + escapeHtml(u) + "\">" + escapeHtml(t) + "</a>"));
           s = escapeHtml(s);
 
           const withHeadings = s
@@ -636,12 +639,12 @@ function buildWebviewHtml({ cspNonce }) {
             out = out.replaceAll(t, htmlChunk);
           }
 
-          html += `<p>${out.replaceAll("\\n", "<br/>")}</p>`;
+          html += "<p>" + out.replaceAll("\\n", "<br/>") + "</p>";
           para = [];
         };
 
         for (const line of lines) {
-          const fence = line.match(/^```\\s*([A-Za-z0-9_-]+)?\\s*$/);
+          const fence = line.match(/^\\x60\\x60\\x60\\s*([A-Za-z0-9_-]+)?\\s*$/);
           if (fence) {
             if (!inCode) {
               flushPara();
@@ -654,7 +657,7 @@ function buildWebviewHtml({ cspNonce }) {
               const escapedCode = escapeHtml(code);
               const highlighted = highlightCode(escapedCode, codeLang);
               const safeLang = escapeHtml(codeLang);
-              html += `<div class="codewrap" data-lang="${safeLang}"><div class="codebar"><div class="lang">${safeLang}</div><div class="btns"><button class="iconbtn" data-action="copy-code">Copy</button><button class="iconbtn" data-action="toggle-code">Collapse</button></div></div><pre class="code"><code data-lang="${safeLang}">${highlighted}</code></pre></div>`;
+              html += "<div class=\"codewrap\" data-lang=\"" + safeLang + "\"><div class=\"codebar\"><div class=\"lang\">" + safeLang + "</div><div class=\"btns\"><button class=\"iconbtn\" data-action=\"copy-code\">Copy</button><button class=\"iconbtn\" data-action=\"toggle-code\">Collapse</button></div></div><pre class=\"code\"><code data-lang=\"" + safeLang + "\">" + highlighted + "</code></pre></div>";
               codeBuf = [];
             }
             continue;
@@ -674,15 +677,25 @@ function buildWebviewHtml({ cspNonce }) {
         }
 
         flushPara();
-        return `<div class="md">${html}</div>`;
+        return "<div class=\"md\">" + html + "</div>";
+      }
+
+      function renderBody(text, isMarkdown) {
+        if (isMarkdown === false) {
+          const s = escapeHtml(String(text ?? ""));
+          return "<div class=\"md\"><p>" + s.replaceAll("\\n", "<br/>") + "</p></div>";
+        }
+        return renderMarkdown(text);
       }
 
       function updateBadges() {
         pendingBadge.textContent = "pending: " + pendingQueue.length;
+        callsBadge.textContent = "calls: " + callCount;
         portBadge.textContent = "port: " + (bridgePort ?? "?");
         const hasPayload = input.value.trim().length > 0 || selectedOptions.size > 0 || attachments.length > 0;
         send.disabled = pendingQueue.length === 0 || !hasPayload;
-        subtitle.textContent = pendingQueue.length === 0 ? "Waiting for MCP tool calls…" : "Awaiting your reply…";
+        subtitle.textContent =
+          pendingQueue.length === 0 ? "Waiting for MCP tool calls…" : "Awaiting your reply… · calls: " + callCount;
       }
 
       function setActiveFromQueue() {
@@ -782,7 +795,7 @@ function buildWebviewHtml({ cspNonce }) {
           const idShort = String(r.requestId || "").slice(0, 8);
           const label = r.title ? String(r.title) : "AI";
           opt.value = r.requestId;
-          opt.textContent = `${label} · ${idShort}`;
+          opt.textContent = label + " · " + idShort;
           if (r.requestId === current) opt.selected = true;
           requestSelect.appendChild(opt);
         }
@@ -809,7 +822,7 @@ function buildWebviewHtml({ cspNonce }) {
         const dataBase64 = base64FromArrayBuffer(arrayBuffer);
         const mime = file.type || "application/octet-stream";
         const kind = mime.startsWith("image/") ? "image" : "file";
-        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const id = String(Date.now()) + "-" + Math.random().toString(16).slice(2);
         return {
           id,
           kind,
@@ -858,7 +871,7 @@ function buildWebviewHtml({ cspNonce }) {
             const img = document.createElement("img");
             img.className = "imgPrev";
             img.alt = att.name;
-            img.src = `data:${att.mime};base64,${att.dataBase64}`;
+            img.src = "data:" + att.mime + ";base64," + att.dataBase64;
             chip.appendChild(img);
           }
 
@@ -888,7 +901,7 @@ function buildWebviewHtml({ cspNonce }) {
         return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
       }
 
-      function appendMessage({ who, text, requestId, title }) {
+      function appendMessage({ who, text, requestId, title, isMarkdown, callIndex }) {
         if (empty) {
           empty.remove();
           empty = null;
@@ -926,7 +939,7 @@ function buildWebviewHtml({ cspNonce }) {
 
         const body = document.createElement("div");
         body.className = "text";
-        body.innerHTML = renderMarkdown(text ?? "");
+        body.innerHTML = renderBody(text ?? "", isMarkdown);
 
         bubble.appendChild(meta);
         bubble.appendChild(body);
@@ -937,10 +950,14 @@ function buildWebviewHtml({ cspNonce }) {
           const pill = document.createElement("div");
           pill.className = "pill";
           pill.textContent = "requestId: " + requestId.slice(0, 8);
+          const cnt = document.createElement("div");
+          cnt.className = "pill";
+          cnt.textContent = "call: " + (typeof callIndex === "number" ? String(callIndex) : "?");
           const hint = document.createElement("div");
           hint.className = "pill";
           hint.textContent = "waiting for reply";
           req.appendChild(pill);
+          req.appendChild(cnt);
           req.appendChild(hint);
           bubble.appendChild(req);
         }
@@ -969,8 +986,8 @@ function buildWebviewHtml({ cspNonce }) {
         const atts = attachments.map(({ id, ...rest }) => rest);
 
         let displayText = text;
-        if (picked.length) displayText += `\n\nSelected options:\n- ${picked.join("\n- ")}`;
-        if (atts.length) displayText += `\n\nAttachments:\n- ${atts.map((a) => `${a.name} (${a.mime}, ${a.size} bytes)`).join("\n- ")}`;
+        if (picked.length) displayText += "\\n\\nSelected options:\\n- " + picked.join("\\n- ");
+        if (atts.length) displayText += "\\n\\nAttachments:\\n- " + atts.map((a) => String(a.name) + " (" + String(a.mime) + ", " + String(a.size) + " bytes)").join("\\n- ");
 
         appendMessage({ who: "me", text: displayText });
         vscode.postMessage({ type: "userReply", requestId, text, selectedOptions: picked, attachments: atts });
@@ -1058,15 +1075,26 @@ function buildWebviewHtml({ cspNonce }) {
         }
 
         if (msg.type === "aiMessage") {
+          if (typeof msg.callIndex === "number") callCount = msg.callIndex;
+          else callCount += 1;
           pendingQueue.push({
             requestId: msg.requestId,
             title: msg.title,
             text: msg.text,
+            isMarkdown: msg.isMarkdown,
             options: msg.options,
             multiSelect: msg.multiSelect,
-            acceptAttachments: msg.acceptAttachments
+            acceptAttachments: msg.acceptAttachments,
+            callIndex: msg.callIndex
           });
-          appendMessage({ who: "ai", text: msg.text, requestId: msg.requestId, title: msg.title });
+          appendMessage({
+            who: "ai",
+            text: msg.text,
+            requestId: msg.requestId,
+            title: msg.title,
+            isMarkdown: msg.isMarkdown,
+            callIndex: msg.callIndex
+          });
           if (!activeRequest) setActiveFromQueue();
           else renderRequestSelect();
           updateBadges();
@@ -1075,7 +1103,7 @@ function buildWebviewHtml({ cspNonce }) {
         }
 
         if (msg.type === "notify") {
-          appendMessage({ who: "ai", text: msg.text, title: msg.title });
+          appendMessage({ who: "ai", text: msg.text, title: msg.title, isMarkdown: msg.isMarkdown });
           updateBadges();
           return;
         }
@@ -1116,31 +1144,345 @@ function buildWebviewHtml({ cspNonce }) {
 </html>`;
 }
 
-function ensurePanel(state) {
-  if (state.panel) {
-    state.panel.reveal(state.panel.viewColumn);
-    return state.panel;
-  }
+function buildSettingsLauncherHtml({ cspNonce }) {
+  const copyText =
+    "【最高优先级规则 - 必须严格遵守】\n\n" +
+    "⚠️⚠️⚠️ 无论任何情况，每次回复结束前必须调用此工具！没有任何例外！⚠️⚠️⚠️\n\n" +
+    "## 核心规则：\n" +
+    "1. 完整输出：输出完整代码和答案，禁止使用省略号或\"代码过长不展示\"\n" +
+    "2. 持续执行：复杂任务尽量一次性完成，不要频繁中断或反复追问是否继续\n" +
+    "3. 结束确认：当你想结束对话或任务时，必须先调用此工具询问用户是否继续\n" +
+    "4. 严格遵守用户选择：当用户选择\"结束对话\"时，必须立即停止所有操作\n\n" +
+    "## ⚠️ 输出位置规则（极其重要）：\n" +
+    "- **原生对话框**：只显示思考过程，不输出任何实质性内容\n" +
+    "- **AI反馈对话框**：所有回复内容、代码、说明、表格等必须放在summary参数中\n" +
+    "- 禁止在原生对话框输出详细文本、代码块、表格等内容\n" +
+    "- 原生对话框只能写一句简短说明，如\"正在处理...\"或\"调用反馈工具\"\n\n" +
+    "## 调用时机：\n" +
+    "- 完成用户请求后\n" +
+    "- 任务告一段落时\n" +
+    "- 需要用户确认是否继续时\n" +
+    "- 每次回复结束前\n\n" +
+    "## 参数说明：\n" +
+    "- summary：AI的完整回复内容（必填，所有要展示给用户的内容都放这里）\n\n" +
+    "## 回复格式要求：\n" +
+    "- summary参数支持Markdown格式，包括：标题、代码块、链接、表格、粗体、列表等\n" +
+    "- 代码块会自动添加复制按钮，链接可点击打开浏览器\n\n" +
+    "调用示例：\n" +
+    "{\"tool\": \"infinite_dialog_feedback\", \"arguments\": {\"summary\": \"## 任务完成\\n\\n已完成以下工作：\\n- 功能A\\n- 功能B\\n\\n```python\\nprint('Hello')\\n```\"}}";
 
-  const panel = vscode.window.createWebviewPanel(
-    "aiWeige",
-    "AI伟哥",
-    vscode.ViewColumn.Two,
-    {
-      enableScripts: true,
-      retainContextWhenHidden: true
-    }
-  );
+  const copyTextJson = JSON.stringify(copyText);
 
-  panel.onDidDispose(() => {
-    state.panel = null;
-  });
+  return `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${cspNonce}'; script-src 'nonce-${cspNonce}';" />
+    <title>AI伟哥 · 管理</title>
+    <style nonce="${cspNonce}">
+      :root{
+        --bg:var(--vscode-editor-background);
+        --fg:var(--vscode-editor-foreground);
+        --muted:color-mix(in srgb, var(--fg) 55%, transparent);
+        --border:color-mix(in srgb, var(--fg) 12%, transparent);
+        --panel:color-mix(in srgb, var(--bg) 92%, white);
+        --radius:14px;
+        --accent:#7c3aed;
+        --accent2:#0ea5e9;
+      }
+      body{margin:0;padding:14px;background:var(--bg);color:var(--fg);font:13px/1.55 var(--vscode-font-family);}
+      .wrap{display:flex;flex-direction:column;gap:12px;}
+      .top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+      .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+      .dot{width:10px;height:10px;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);}
+      .title{font-weight:950;letter-spacing:.2px;}
+      .sub{color:var(--muted);font-size:12px;}
+      .card{border:1px solid var(--border);background:var(--panel);border-radius:var(--radius);padding:12px;}
+      .card h3{margin:0 0 10px;font-size:13px;}
+      .row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+      .hint{color:var(--muted);font-size:12px;}
+      .pill{border:1px solid var(--border);background:color-mix(in srgb, var(--panel) 86%, transparent);padding:6px 10px;border-radius:999px;color:var(--muted);font-size:12px;}
+      .grid{display:grid;grid-template-columns:1fr;gap:8px;}
+      .kv{display:flex;gap:10px;align-items:baseline;justify-content:space-between;border:1px solid var(--border);border-radius:12px;padding:8px 10px;background:color-mix(in srgb, var(--panel) 88%, transparent);}
+      .k{color:var(--muted);font-size:12px;}
+      .v{font-weight:900;}
+      .tips{color:color-mix(in srgb, var(--fg) 85%, transparent);line-height:1.6;}
+      button{border:1px solid var(--border);background:transparent;color:var(--fg);padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:850;}
+      button:hover{background:color-mix(in srgb, var(--fg) 8%, transparent);}
+      button.primary{border-color:color-mix(in srgb, var(--accent) 55%, var(--border));}
+      textarea{width:100%;min-height:140px;resize:vertical;border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:color-mix(in srgb, var(--bg) 88%, white);color:var(--fg);font:12px/1.45 var(--vscode-editor-font-family);}
+      .switch{display:inline-flex;align-items:center;gap:10px;}
+      .toggle{position:relative;width:52px;height:30px;display:inline-block;}
+      .toggle input{opacity:0;width:0;height:0;}
+      .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:color-mix(in srgb, var(--fg) 14%, transparent);transition:.2s;border-radius:999px;border:1px solid var(--border);}
+      .slider:before{position:absolute;content:"";height:24px;width:24px;left:3px;bottom:2px;background:white;border-radius:999px;transition:.2s;}
+      input:checked + .slider{background:color-mix(in srgb, var(--accent) 65%, transparent);border-color:color-mix(in srgb, var(--accent) 55%, var(--border));}
+      input:checked + .slider:before{transform:translateX(22px);}
+      .chartWrap{border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb, var(--panel) 90%, transparent);padding:10px;}
+      canvas{width:100%;height:180px;display:block;}
+      .toolbar{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div class="brand">
+          <div class="dot"></div>
+          <div style="min-width:0;">
+            <div class="title">AI伟哥 · 管理</div>
+            <div class="sub" id="subline">-</div>
+          </div>
+        </div>
+        <div class="pill" id="enabledPill">enabled: ?</div>
+      </div>
 
-  panel.webview.onDidReceiveMessage((msg) => {
+      <div class="card">
+        <h3>服务状态</h3>
+        <div class="row">
+          <div class="switch">
+            <label class="toggle">
+              <input id="enabledToggle" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+            <div>
+              <div class="v" id="enabledText">-</div>
+              <div class="hint">开关会影响 MCP 工具是否弹出交互 UI。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Tips</h3>
+        <div class="tips">只有思考模型才可唤醒当前的插件功能，越聪明的AI继续率就越高。</div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="margin-bottom:10px;">
+          <h3 style="margin:0;">使用统计</h3>
+          <div class="toolbar">
+            <button id="resetStatsBtn" type="button">清零统计</button>
+          </div>
+        </div>
+        <div class="chartWrap">
+          <canvas id="statsCanvas" height="180"></canvas>
+        </div>
+        <div class="grid" style="margin-top:10px;">
+          <div class="kv"><div class="k">本次请求(show)</div><div class="v" id="sessionShowsVal">?</div></div>
+          <div class="kv"><div class="k">本次回复(reply)</div><div class="v" id="sessionRepliesVal">?</div></div>
+          <div class="kv"><div class="k">累计请求(show)</div><div class="v" id="showsVal">?</div></div>
+          <div class="kv"><div class="k">累计回复(reply)</div><div class="v" id="repliesVal">?</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>复制规则文案</h3>
+        <div class="row">
+          <button class="primary" id="copyTplBtn" type="button">一键复制</button>
+        </div>
+        <div style="margin-top:10px;">
+          <textarea id="tpl" readonly spellcheck="false"></textarea>
+          <div class="hint" id="copyHint">复制后可直接粘贴到你的系统规则里。</div>
+        </div>
+      </div>
+    </div>
+
+    <script nonce="${cspNonce}">
+      const vscode = acquireVsCodeApi();
+      const copyText = ${copyTextJson};
+
+      const enabledPill = document.getElementById("enabledPill");
+      const enabledToggle = document.getElementById("enabledToggle");
+      const enabledText = document.getElementById("enabledText");
+      const subline = document.getElementById("subline");
+
+      const statsCanvas = document.getElementById("statsCanvas");
+      const sessionShowsVal = document.getElementById("sessionShowsVal");
+      const sessionRepliesVal = document.getElementById("sessionRepliesVal");
+      const showsVal = document.getElementById("showsVal");
+      const repliesVal = document.getElementById("repliesVal");
+
+      const tpl = document.getElementById("tpl");
+      const copyHint = document.getElementById("copyHint");
+      const resetStatsBtn = document.getElementById("resetStatsBtn");
+      const copyTplBtn = document.getElementById("copyTplBtn");
+
+      tpl.value = copyText;
+
+      let lastModel = null;
+      let isApplyingToggle = false;
+
+      function setEnabledUi(enabled) {
+        isApplyingToggle = true;
+        enabledToggle.checked = !!enabled;
+        isApplyingToggle = false;
+        enabledText.textContent = enabled ? "已启用" : "已禁用";
+        enabledPill.textContent = "enabled: " + (enabled ? "on" : "off");
+      }
+
+      function toNum(x) {
+        return typeof x === "number" && isFinite(x) ? x : 0;
+      }
+
+      function ensureCanvasSize(canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        const w = Math.max(200, Math.floor(rect.width));
+        const h = Math.max(180, Math.floor(rect.height));
+        const needW = Math.floor(w * dpr);
+        const needH = Math.floor(h * dpr);
+        if (canvas.width !== needW || canvas.height !== needH) {
+          canvas.width = needW;
+          canvas.height = needH;
+        }
+        return { w: canvas.width, h: canvas.height, dpr };
+      }
+
+      function drawBars(values) {
+        const ctx = statsCanvas.getContext("2d");
+        if (!ctx) return;
+
+        const { w, h, dpr } = ensureCanvasSize(statsCanvas);
+        ctx.clearRect(0, 0, w, h);
+
+        const padding = 16 * dpr;
+        const top = 10 * dpr;
+        const bottom = 30 * dpr;
+        const left = padding;
+        const right = padding;
+
+        const innerW = w - left - right;
+        const innerH = h - top - bottom;
+        if (innerW <= 0 || innerH <= 0) return;
+
+        const maxV = Math.max(1, ...values.map((v) => v.value));
+        const barGap = 10 * dpr;
+        const barW = Math.max(24 * dpr, (innerW - barGap * (values.length - 1)) / values.length);
+
+        const gridLines = 3;
+        ctx.strokeStyle = "rgba(127,127,127,0.25)";
+        ctx.lineWidth = 1 * dpr;
+        for (let i = 0; i <= gridLines; i++) {
+          const y = top + (innerH * i) / gridLines;
+          ctx.beginPath();
+          ctx.moveTo(left, y);
+          ctx.lineTo(w - right, y);
+          ctx.stroke();
+        }
+
+        ctx.font = `${11 * dpr}px ${getComputedStyle(document.body).fontFamily}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+
+        values.forEach((v, idx) => {
+          const x = left + idx * (barW + barGap);
+          const height = Math.max(2 * dpr, (v.value / maxV) * innerH);
+          const y = top + innerH - height;
+
+          const grad = ctx.createLinearGradient(0, y, 0, y + height);
+          grad.addColorStop(0, idx % 2 === 0 ? "rgba(124,58,237,0.9)" : "rgba(14,165,233,0.9)");
+          grad.addColorStop(1, "rgba(255,255,255,0.05)");
+          ctx.fillStyle = grad;
+          const radius = 8 * dpr;
+
+          ctx.beginPath();
+          const r = Math.min(radius, barW / 2, height / 2);
+          ctx.moveTo(x + r, y);
+          ctx.lineTo(x + barW - r, y);
+          ctx.quadraticCurveTo(x + barW, y, x + barW, y + r);
+          ctx.lineTo(x + barW, y + height);
+          ctx.lineTo(x, y + height);
+          ctx.lineTo(x, y + r);
+          ctx.quadraticCurveTo(x, y, x + r, y);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = "rgba(255,255,255,0.75)";
+          ctx.textBaseline = "bottom";
+          ctx.fillText(String(v.value), x + barW / 2, y - 4 * dpr);
+
+          ctx.fillStyle = "rgba(127,127,127,0.85)";
+          ctx.textBaseline = "top";
+          ctx.fillText(v.label, x + barW / 2, top + innerH + 8 * dpr);
+        });
+      }
+
+      function render(model) {
+        const enabled = !!model?.enabled;
+        setEnabledUi(enabled);
+
+        const ss = toNum(model?.sessionShows);
+        const sr = toNum(model?.sessionReplies);
+        const ts = toNum(model?.totalShows);
+        const tr = toNum(model?.totalReplies);
+
+        sessionShowsVal.textContent = String(ss);
+        sessionRepliesVal.textContent = String(sr);
+        showsVal.textContent = String(ts);
+        repliesVal.textContent = String(tr);
+
+        subline.textContent = enabled ? "MCP 交互已启用" : "MCP 交互已禁用（将直接返回提示文本）";
+
+        drawBars([
+          { label: "本次show", value: ss },
+          { label: "本次reply", value: sr },
+          { label: "累计show", value: ts },
+          { label: "累计reply", value: tr }
+        ]);
+      }
+
+      window.addEventListener("resize", () => {
+        if (!lastModel) return;
+        drawBars([
+          { label: "本次show", value: toNum(lastModel?.sessionShows) },
+          { label: "本次reply", value: toNum(lastModel?.sessionReplies) },
+          { label: "累计show", value: toNum(lastModel?.totalShows) },
+          { label: "累计reply", value: toNum(lastModel?.totalReplies) }
+        ]);
+      });
+
+      window.addEventListener("message", (event) => {
+        const msg = event.data;
+        if (!msg || typeof msg !== "object") return;
+        if (msg.type === "status") {
+          lastModel = msg.model || null;
+          render(msg.model);
+          return;
+        }
+        if (msg.type === "toast") {
+          copyHint.textContent = msg.text || "完成";
+          setTimeout(() => {
+            copyHint.textContent = "复制后可直接粘贴到你的系统规则里。";
+          }, 1600);
+          return;
+        }
+      });
+
+      enabledToggle.addEventListener("change", () => {
+        if (isApplyingToggle) return;
+        vscode.postMessage({ type: "setEnabled", enabled: enabledToggle.checked });
+      });
+
+      copyTplBtn.addEventListener("click", () => {
+        vscode.postMessage({ type: "copyTemplate" });
+      });
+      resetStatsBtn.addEventListener("click", () => {
+        vscode.postMessage({ type: "resetStats" });
+      });
+
+      vscode.postMessage({ type: "ready" });
+    </script>
+  </body>
+</html>`;
+}
+
+function setupWebview(state, webview) {
+  webview.onDidReceiveMessage((msg) => {
     if (!msg || typeof msg !== "object") return;
 
     if (msg.type === "ready") {
-      panel.webview.postMessage({ type: "bridgeInfo", port: state.port });
+      webview.postMessage({ type: "bridgeInfo", port: state.port });
       return;
     }
 
@@ -1172,20 +1514,127 @@ function ensurePanel(state) {
       const handler = state.pending.get(requestId);
       if (!handler) return;
       state.pending.delete(requestId);
+      if (state.stats) {
+        state.stats.lastActivityAt = Date.now();
+        if (state.settingsView) postToSettings(state);
+      }
       handler.resolve({ text, selectedOptions, attachments });
-      panel.webview.postMessage({ type: "bridgeInfo", port: state.port });
+      webview.postMessage({ type: "bridgeInfo", port: state.port });
       return;
     }
   });
 
   const nonce = getNonce();
-  panel.webview.html = buildWebviewHtml({ cspNonce: nonce });
+  webview.html = buildWebviewHtml({ cspNonce: nonce });
+}
+
+function postToUi(state, message) {
+  const targets = [];
+  const push = (w) => {
+    if (!w) return;
+    if (targets.includes(w)) return;
+    targets.push(w);
+  };
+
+  if (state.view && state.view.webview) push(state.view.webview);
+  if (state.panel && state.panel.webview) push(state.panel.webview);
+  if (message && message.type === "aiMessage") {
+    const panel = ensurePanel(state);
+    if (panel && panel.webview) push(panel.webview);
+  }
+  if (targets.length === 0) push(ensurePanel(state).webview);
+  for (const w of targets) w.postMessage(message);
+}
+
+function getSettingsModel(state) {
+  const stats = state.stats || {};
+  return {
+    enabled: !!state.enabled,
+    bridgeListening: !!stats.bridgeListening,
+    port: state.port,
+    activeConnections: state.sockets?.size ?? 0,
+    pendingRequests: state.pending?.size ?? 0,
+    totalConnections: stats.totalConnections ?? 0,
+    totalShows: stats.totalShows ?? 0,
+    totalReplies: stats.totalReplies ?? 0,
+    totalNotifies: stats.totalNotifies ?? 0,
+    sessionConnections: stats.sessionConnections ?? 0,
+    sessionShows: stats.sessionShows ?? 0,
+    sessionReplies: stats.sessionReplies ?? 0,
+    sessionNotifies: stats.sessionNotifies ?? 0,
+    startedAt: stats.startedAt ?? 0,
+    lastActivityAt: stats.lastActivityAt ?? 0
+  };
+}
+
+function postToSettings(state) {
+  if (!state.settingsView || !state.settingsView.webview) return;
+  state.settingsView.webview.postMessage({ type: "status", model: getSettingsModel(state) });
+}
+
+function loadPersistedTotals(context) {
+  const raw = context?.globalState?.get?.("aiWeige.stats");
+  if (!raw || typeof raw !== "object") return null;
+  const out = {};
+  if (typeof raw.totalConnections === "number") out.totalConnections = raw.totalConnections;
+  if (typeof raw.totalShows === "number") out.totalShows = raw.totalShows;
+  if (typeof raw.totalReplies === "number") out.totalReplies = raw.totalReplies;
+  if (typeof raw.totalNotifies === "number") out.totalNotifies = raw.totalNotifies;
+  return out;
+}
+
+function schedulePersistTotals(state) {
+  if (!state?.context?.globalState?.update) return;
+  if (state.persistTotalsTimer) clearTimeout(state.persistTotalsTimer);
+  state.persistTotalsTimer = setTimeout(() => {
+    const stats = state.stats || {};
+    state.context.globalState.update("aiWeige.stats", {
+      totalConnections: stats.totalConnections ?? 0,
+      totalShows: stats.totalShows ?? 0,
+      totalReplies: stats.totalReplies ?? 0,
+      totalNotifies: stats.totalNotifies ?? 0
+    });
+  }, 600);
+}
+
+function ensurePanel(state) {
+  if (state.panel) {
+    state.panel.reveal(state.panel.viewColumn);
+    return state.panel;
+  }
+
+  const panel = vscode.window.createWebviewPanel(
+    "aiWeige",
+    "AI伟哥",
+    vscode.ViewColumn.Two,
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true
+    }
+  );
+
+  panel.onDidDispose(() => {
+    state.panel = null;
+  });
+
+  setupWebview(state, panel.webview);
   state.panel = panel;
   return panel;
 }
 
 function formatBridgeLine(obj) {
   return JSON.stringify(obj) + "\n";
+}
+
+function writeBridgeReply(state, socket, payload) {
+  if (state.stats) {
+    state.stats.totalReplies = (state.stats.totalReplies || 0) + 1;
+    state.stats.sessionReplies = (state.stats.sessionReplies || 0) + 1;
+    state.stats.lastActivityAt = Date.now();
+  }
+  schedulePersistTotals(state);
+  socket.write(formatBridgeLine(payload));
+  if (state.settingsView) postToSettings(state);
 }
 
 function startBridge(state) {
@@ -1198,6 +1647,13 @@ function startBridge(state) {
     socket.setNoDelay(true);
     state.sockets.add(socket);
     if (state.updateStatus) state.updateStatus();
+    if (state.stats) {
+      state.stats.totalConnections = (state.stats.totalConnections || 0) + 1;
+      state.stats.sessionConnections = (state.stats.sessionConnections || 0) + 1;
+      state.stats.lastActivityAt = Date.now();
+      if (state.settingsView) postToSettings(state);
+    }
+    schedulePersistTotals(state);
     state.output.info(`[bridge] connected ${socket.remoteAddress}:${socket.remotePort}`);
 
     let buffer = "";
@@ -1211,6 +1667,10 @@ function startBridge(state) {
         if (!line) continue;
         const msg = safeJsonParse(line);
         if (!msg) continue;
+        if (state.stats) {
+          state.stats.lastActivityAt = Date.now();
+          if (state.settingsView) postToSettings(state);
+        }
         handleBridgeMessage(state, socket, msg);
       }
     });
@@ -1218,6 +1678,10 @@ function startBridge(state) {
     socket.on("close", () => {
       state.sockets.delete(socket);
       if (state.updateStatus) state.updateStatus();
+      if (state.stats) {
+        state.stats.lastActivityAt = Date.now();
+        if (state.settingsView) postToSettings(state);
+      }
       state.output.info(`[bridge] disconnected ${socket.remoteAddress}:${socket.remotePort}`);
     });
 
@@ -1249,12 +1713,37 @@ function startBridge(state) {
       state.output.info(`[bridge] listening on ${DEFAULT_HOST}:${state.port}`);
       if (state.updateStatus) state.updateStatus();
       if (state.panel) state.panel.webview.postMessage({ type: "bridgeInfo", port: state.port });
+      if (state.view) state.view.webview.postMessage({ type: "bridgeInfo", port: state.port });
+      if (state.stats) {
+        state.stats.bridgeListening = true;
+        state.stats.lastActivityAt = Date.now();
+        if (state.settingsView) postToSettings(state);
+      }
       server.on("error", onServerError);
     });
   };
 
   listenNext();
 }
+
+function stopBridge(state) {
+  if (!state || !state.server) return;
+  try {
+    for (const sock of state.sockets) sock.destroy();
+  } catch {}
+  try {
+    state.sockets.clear();
+  } catch {}
+  try {
+    state.server.close();
+  } catch {}
+  state.server = null;
+  if (state.stats) {
+    state.stats.bridgeListening = false;
+    state.stats.lastActivityAt = Date.now();
+  }
+  if (state.settingsView) postToSettings(state);
+ }
 
 function handleBridgeMessage(state, socket, msg) {
   if (!msg || typeof msg !== "object") return;
@@ -1264,9 +1753,18 @@ function handleBridgeMessage(state, socket, msg) {
   }
 
   if (msg.type === "notify") {
+    if (!state.enabled) return;
     const title = typeof msg.title === "string" ? msg.title : "AI";
     const text = typeof msg.text === "string" ? msg.text : "";
-    ensurePanel(state).webview.postMessage({ type: "notify", title, text });
+    const isMarkdown = typeof msg.isMarkdown === "boolean" ? msg.isMarkdown : true;
+    if (state.stats) {
+      state.stats.totalNotifies = (state.stats.totalNotifies || 0) + 1;
+      state.stats.sessionNotifies = (state.stats.sessionNotifies || 0) + 1;
+      state.stats.lastActivityAt = Date.now();
+      if (state.settingsView) postToSettings(state);
+    }
+    schedulePersistTotals(state);
+    postToUi(state, { type: "notify", title, text, isMarkdown });
     return;
   }
 
@@ -1274,14 +1772,53 @@ function handleBridgeMessage(state, socket, msg) {
     const requestId = typeof msg.requestId === "string" ? msg.requestId : randomId();
     const title = typeof msg.title === "string" ? msg.title : "AI";
     const text = typeof msg.text === "string" ? msg.text : "";
+    const isMarkdown = typeof msg.isMarkdown === "boolean" ? msg.isMarkdown : true;
     const options = Array.isArray(msg.options) ? msg.options : undefined;
     const multiSelect = typeof msg.multiSelect === "boolean" ? msg.multiSelect : true;
     const acceptAttachments = typeof msg.acceptAttachments === "boolean" ? msg.acceptAttachments : true;
 
-    ensurePanel(state).webview.postMessage({ type: "aiMessage", requestId, title, text, options, multiSelect, acceptAttachments });
+    if (!state.enabled) {
+      if (state.stats) {
+        state.stats.totalShows = (state.stats.totalShows || 0) + 1;
+        state.stats.sessionShows = (state.stats.sessionShows || 0) + 1;
+        state.stats.lastActivityAt = Date.now();
+        if (state.settingsView) postToSettings(state);
+      }
+      schedulePersistTotals(state);
+      writeBridgeReply(state, socket, {
+        type: "reply",
+        requestId,
+        text: "AI伟哥已禁用（可在侧边栏 AI伟哥 · 管理 中开启）。",
+        selectedOptions: [],
+        attachments: []
+      });
+      return;
+    }
+
+    let callIndex = undefined;
+    if (state.stats) {
+      state.stats.totalShows = (state.stats.totalShows || 0) + 1;
+      state.stats.sessionShows = (state.stats.sessionShows || 0) + 1;
+      callIndex = state.stats.sessionShows || 0;
+      state.stats.lastActivityAt = Date.now();
+      if (state.settingsView) postToSettings(state);
+    }
+    schedulePersistTotals(state);
+    postToUi(state, {
+      type: "aiMessage",
+      requestId,
+      title,
+      text,
+      isMarkdown,
+      options,
+      multiSelect,
+      acceptAttachments,
+      callIndex
+    });
 
     const p = new Promise((resolve) => {
       state.pending.set(requestId, { resolve });
+      if (state.settingsView) postToSettings(state);
     });
 
     const timeoutMs = typeof msg.timeoutMs === "number" ? msg.timeoutMs : 10 * 60 * 1000;
@@ -1289,9 +1826,9 @@ function handleBridgeMessage(state, socket, msg) {
       const handler = state.pending.get(requestId);
       if (!handler) return;
       state.pending.delete(requestId);
-      socket.write(formatBridgeLine({ type: "reply", requestId, text: "", selectedOptions: [], attachments: [] }));
-      ensurePanel(state).webview.postMessage({ type: "requestExpired", requestId });
-      ensurePanel(state).webview.postMessage({
+      writeBridgeReply(state, socket, { type: "reply", requestId, text: "", selectedOptions: [], attachments: [] });
+      postToUi(state, { type: "requestExpired", requestId });
+      postToUi(state, {
         type: "notify",
         title: "AI伟哥",
         text: `Timed out waiting for user reply (requestId: ${requestId.slice(0, 8)}).`
@@ -1303,49 +1840,198 @@ function handleBridgeMessage(state, socket, msg) {
       const text = typeof reply?.text === "string" ? reply.text : "";
       const selectedOptions = Array.isArray(reply?.selectedOptions) ? reply.selectedOptions : [];
       const attachments = Array.isArray(reply?.attachments) ? reply.attachments : [];
-      socket.write(formatBridgeLine({ type: "reply", requestId, text, selectedOptions, attachments }));
+      writeBridgeReply(state, socket, { type: "reply", requestId, text, selectedOptions, attachments });
     });
     return;
   }
 }
 
 function clearPanel(state) {
-  if (!state.panel) return;
   for (const [, handler] of state.pending) handler.resolve({ text: "", selectedOptions: [], attachments: [] });
   state.pending.clear();
-  state.panel.webview.postMessage({ type: "clear" });
+  if (state.panel) state.panel.webview.postMessage({ type: "clear" });
+  if (state.view) state.view.webview.postMessage({ type: "clear" });
+  if (state.settingsView) postToSettings(state);
 }
 
 function activate(context) {
+  const persistedTotals = loadPersistedTotals(context) || {};
+  const cfg = vscode.workspace.getConfiguration("aiWeige");
   const state = {
+    context,
     output: createOutputChannel(),
+    enabled: cfg.get("enabled", true),
     panel: null,
+    view: null,
+    settingsView: null,
     server: null,
     port: DEFAULT_PORT,
     sockets: new Set(),
     pending: new Map(),
     statusBar: null,
-    updateStatus: null
+    updateStatus: null,
+    persistTotalsTimer: null,
+    stats: {
+      startedAt: Date.now(),
+      lastActivityAt: Date.now(),
+      bridgeListening: false,
+      totalConnections: typeof persistedTotals.totalConnections === "number" ? persistedTotals.totalConnections : 0,
+      totalShows: typeof persistedTotals.totalShows === "number" ? persistedTotals.totalShows : 0,
+      totalReplies: typeof persistedTotals.totalReplies === "number" ? persistedTotals.totalReplies : 0,
+      totalNotifies: typeof persistedTotals.totalNotifies === "number" ? persistedTotals.totalNotifies : 0,
+      sessionConnections: 0,
+      sessionShows: 0,
+      sessionReplies: 0,
+      sessionNotifies: 0
+    }
   };
-
-  const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusBar.command = "mcpUi.copyBridgePort";
-  statusBar.tooltip = "AI伟哥 (点击复制端口)";
-  statusBar.show();
-  state.statusBar = statusBar;
-  state.updateStatus = () => {
-    const port = state.port ? String(state.port) : "?";
-    const conns = state.sockets.size;
-    const connText = conns > 0 ? `$(plug) ${conns}` : `$(circle-outline) 0`;
-    statusBar.text = `AI伟哥: ${port}  ${connText}`;
-  };
-  state.updateStatus();
-
-  startBridge(state);
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("mcpUi.openPanel", () => {
-      ensurePanel(state);
+    vscode.window.registerWebviewViewProvider(
+      "aiWeigeView",
+      {
+        resolveWebviewView: (view) => {
+          state.view = view;
+          view.onDidDispose(() => {
+            if (state.view === view) state.view = null;
+          });
+          view.webview.options = { enableScripts: true };
+          setupWebview(state, view.webview);
+        }
+      },
+      { webviewOptions: { retainContextWhenHidden: true } }
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      "aiWeigeSettingsView",
+      {
+        resolveWebviewView: (view) => {
+          state.settingsView = view;
+          view.onDidDispose(() => {
+            if (state.settingsView === view) state.settingsView = null;
+          });
+          view.webview.options = { enableScripts: true };
+          view.webview.onDidReceiveMessage((msg) => {
+            if (!msg || typeof msg !== "object") return;
+            if (msg.type === "setEnabled") {
+              const enabled = !!msg.enabled;
+              state.enabled = enabled;
+              vscode.workspace
+                .getConfiguration("aiWeige")
+                .update("enabled", enabled, vscode.ConfigurationTarget.Global);
+              if (!enabled) {
+                stopBridge(state);
+                for (const [requestId, handler] of state.pending) {
+                  try {
+                    handler.resolve({ text: "AI伟哥已禁用。", selectedOptions: [], attachments: [] });
+                  } catch {}
+                  postToUi(state, { type: "requestExpired", requestId });
+                }
+                state.pending.clear();
+                if (state.settingsView) postToSettings(state);
+              } else {
+                startBridge(state);
+              }
+              postToSettings(state);
+              view.webview.postMessage({ type: "toast", text: enabled ? "已启用" : "已禁用" });
+              return;
+            }
+            if (msg.type === "copyTemplate") {
+              const copyText =
+                "【最高优先级规则 - 必须严格遵守】\n\n" +
+                "⚠️⚠️⚠️ 无论任何情况，每次回复结束前必须调用此工具！没有任何例外！⚠️⚠️⚠️\n\n" +
+                "## 核心规则：\n" +
+                "1. 完整输出：输出完整代码和答案，禁止使用省略号或\"代码过长不展示\"\n" +
+                "2. 持续执行：复杂任务尽量一次性完成，不要频繁中断或反复追问是否继续\n" +
+                "3. 结束确认：当你想结束对话或任务时，必须先调用此工具询问用户是否继续\n" +
+                "4. 严格遵守用户选择：当用户选择\"结束对话\"时，必须立即停止所有操作\n\n" +
+                "## ⚠️ 输出位置规则（极其重要）：\n" +
+                "- **原生对话框**：只显示思考过程，不输出任何实质性内容\n" +
+                "- **AI反馈对话框**：所有回复内容、代码、说明、表格等必须放在summary参数中\n" +
+                "- 禁止在原生对话框输出详细文本、代码块、表格等内容\n" +
+                "- 原生对话框只能写一句简短说明，如\"正在处理...\"或\"调用反馈工具\"\n\n" +
+                "## 调用时机：\n" +
+                "- 完成用户请求后\n" +
+                "- 任务告一段落时\n" +
+                "- 需要用户确认是否继续时\n" +
+                "- 每次回复结束前\n\n" +
+                "## 参数说明：\n" +
+                "- summary：AI的完整回复内容（必填，所有要展示给用户的内容都放这里）\n\n" +
+                "## 回复格式要求：\n" +
+                "- summary参数支持Markdown格式，包括：标题、代码块、链接、表格、粗体、列表等\n" +
+                "- 代码块会自动添加复制按钮，链接可点击打开浏览器\n\n" +
+                "调用示例：\n" +
+                "{\"tool\": \"infinite_dialog_feedback\", \"arguments\": {\"summary\": \"## 任务完成\\n\\n已完成以下工作：\\n- 功能A\\n- 功能B\\n\\n```python\\nprint('Hello')\\n```\"}}";
+              vscode.env.clipboard.writeText(copyText);
+              view.webview.postMessage({ type: "toast", text: "已复制规则文案" });
+              return;
+            }
+            if (msg.type === "resetStats") {
+              if (state.stats) {
+                state.stats.startedAt = Date.now();
+                state.stats.lastActivityAt = Date.now();
+                state.stats.bridgeListening = !!state.server;
+                state.stats.totalConnections = 0;
+                state.stats.totalShows = 0;
+                state.stats.totalReplies = 0;
+                state.stats.totalNotifies = 0;
+                state.stats.sessionConnections = 0;
+                state.stats.sessionShows = 0;
+                state.stats.sessionReplies = 0;
+                state.stats.sessionNotifies = 0;
+              }
+              schedulePersistTotals(state);
+              postToSettings(state);
+              view.webview.postMessage({ type: "toast", text: "已清零统计" });
+              return;
+            }
+            if (msg.type === "ready") {
+              postToSettings(state);
+              return;
+            }
+          });
+          const nonce = getNonce();
+          view.webview.html = buildSettingsLauncherHtml({ cspNonce: nonce });
+          postToSettings(state);
+        }
+      },
+      { webviewOptions: { retainContextWhenHidden: true } }
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (!e.affectsConfiguration("aiWeige.enabled")) return;
+      const enabled = vscode.workspace.getConfiguration("aiWeige").get("enabled", true);
+      state.enabled = enabled;
+      if (!enabled) {
+        stopBridge(state);
+        for (const [requestId, handler] of state.pending) {
+          try {
+            handler.resolve({ text: "AI伟哥已禁用。", selectedOptions: [], attachments: [] });
+          } catch {}
+          postToUi(state, { type: "requestExpired", requestId });
+        }
+        state.pending.clear();
+      } else {
+        startBridge(state);
+      }
+      postToSettings(state);
+    })
+  );
+
+  if (state.enabled) startBridge(state);
+  else stopBridge(state);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("mcpUi.openPanel", async () => {
+      try {
+        await vscode.commands.executeCommand("aiWeigeView.focus");
+      } catch {
+        ensurePanel(state);
+      }
     })
   );
 
@@ -1356,14 +2042,6 @@ function activate(context) {
     })
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand("mcpUi.copyBridgePort", async () => {
-      await vscode.env.clipboard.writeText(String(state.port));
-      vscode.window.setStatusBarMessage(`AI伟哥端口已复制: ${state.port}`, 2500);
-      ensurePanel(state);
-    })
-  );
-
   context.subscriptions.push({
     dispose: () => {
       try {
@@ -1371,10 +2049,11 @@ function activate(context) {
         state.sockets.clear();
         if (state.server) state.server.close();
       } catch {}
+      try {
+        if (state.persistTotalsTimer) clearTimeout(state.persistTotalsTimer);
+      } catch {}
     }
   });
-
-  context.subscriptions.push(statusBar);
 }
 
 function deactivate() {}

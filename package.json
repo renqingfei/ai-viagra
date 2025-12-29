@@ -11,6 +11,7 @@
   },
   "scripts": {
     "check": "node --check extension.js && node --check mcp-server.js",
+    "pack": "powershell -ExecutionPolicy Bypass -File .\\\\pack.ps1",
     "package": "npx @vscode/vsce package --no-dependencies"
   },
   "devDependencies": {
@@ -25,8 +26,9 @@
   "main": "./extension.js",
   "activationEvents": [
     "onStartupFinished",
+    "onView:aiWeigeView",
+    "onView:aiWeigeSettingsView",
     "onCommand:mcpUi.openPanel",
-    "onCommand:mcpUi.copyBridgePort",
     "onCommand:mcpUi.clearPanel"
   ],
   "contributes": {
@@ -36,14 +38,44 @@
         "title": "AI伟哥: 打开面板"
       },
       {
-        "command": "mcpUi.copyBridgePort",
-        "title": "AI伟哥: 复制桥接端口"
-      },
-      {
         "command": "mcpUi.clearPanel",
         "title": "AI伟哥: 清空面板"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiWeigeActivity",
+          "title": "AI伟哥",
+          "icon": "resources/aiweige.svg"
+        }
+      ]
+    },
+    "views": {
+      "aiWeigeActivity": [
+        {
+          "type": "webview",
+          "id": "aiWeigeSettingsView",
+          "name": "设置"
+        }
+      ],
+      "panel": [
+        {
+          "type": "webview",
+          "id": "aiWeigeView",
+          "name": "AI伟哥"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI伟哥",
+      "properties": {
+        "aiWeige.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用 AI伟哥 MCP 交互"
+        }
+      }
+    }
   }
 }
-
