@@ -1,7 +1,7 @@
 {
   "name": "trae-mcp-plugin",
-  "displayName": "Trae MCP Plugin",
-  "description": "An MCP plugin for Trae with configuration page and feedback dialog",
+  "displayName": "AI伟哥",
+  "description": "一个带设置页面和对话反馈的 VS Code 插件",
   "repository": {
     "type": "git",
     "url": "https://github.com/example/trae-mcp-plugin"
@@ -13,15 +13,29 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:aiweige.panel"
+  ],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "trae-mcp-plugin.showConfig",
-        "title": "Trae MCP: Show Configuration"
-      }
-    ]
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiweige",
+          "title": "AI伟哥",
+          "icon": "media/aiweige.svg"
+        }
+      ]
+    },
+    "views": {
+      "aiweige": [
+        {
+          "id": "aiweige.panel",
+          "name": "AI伟哥"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
