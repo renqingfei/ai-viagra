@@ -1,58 +1,80 @@
 {
-  "name": "trae-mcp-plugin",
-  "displayName": "AI伟哥",
-  "description": "一个带设置页面和对话反馈的 VS Code 插件",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/example/trae-mcp-plugin"
-  },
-  "version": "0.1.0",
+  "name": "ai-viagra-mcp-vscode",
+  "displayName": "AI Viagra MCP",
+  "description": "Embedded MCP server for listing the current VS Code workspace root directory.",
+  "version": "0.0.1",
+  "publisher": "local",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.88.0"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onView:aiweige.panel"
+    "onCommand:aiViagraMcp.showServerInfo",
+    "onCommand:aiViagraMcp.restartServer",
+    "onCommand:aiViagraMcp.refreshWorkspaceView",
+    "onView:aiViagraMcp.workspaceTree"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "aiViagraMcp.showServerInfo",
+        "title": "AI Viagra MCP: Show Server Info"
+      },
+      {
+        "command": "aiViagraMcp.restartServer",
+        "title": "AI Viagra MCP: Restart Server"
+      },
+      {
+        "command": "aiViagraMcp.refreshWorkspaceView",
+        "title": "AI Viagra MCP: Refresh Workspace View"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "aiweige",
-          "title": "AI伟哥",
+          "id": "aiViagraMcp",
+          "title": "AI Viagra",
           "icon": "media/aiweige.svg"
         }
       ]
     },
     "views": {
-      "aiweige": [
+      "aiViagraMcp": [
         {
-          "id": "aiweige.panel",
-          "name": "AI伟哥"
+          "id": "aiViagraMcp.workspaceTree",
+          "name": "Workspace"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "aiViagraMcp.refreshWorkspaceView",
+          "when": "view == aiViagraMcp.workspaceTree",
+          "group": "navigation"
         }
       ]
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "package": "vsce package"
+    "build": "tsc -p .",
+    "watch": "tsc -p . -w",
+    "vscode:prepublish": "npm run build",
+    "package": "vsce package --out ai-viagra-mcp.vsix --readme-path 说明.md --allow-missing-repository",
+    "package:vsix": "npm run package"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.1",
-    "express": "^4.21.1",
-    "zod": "^3.23.8"
+    "@modelcontextprotocol/sdk": "^1.18.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.9.0",
-    "@types/vscode": "^1.90.0",
-    "@vscode/vsce": "^3.7.1",
-    "typescript": "^5.6.3"
+    "@vscode/vsce": "^3.3.0",
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.88.0",
+    "typescript": "^5.7.2"
   }
 }

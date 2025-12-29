@@ -1,7 +1,6 @@
+.cunzhi-memory/**
+.git/**
 .vscode/**
-.vscode-test/**
-build/**
+node_modules/**
 src/**
-.gitignore
 tsconfig.json
-**/*.map
