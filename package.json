@@ -34,7 +34,8 @@
       "aiFeedbackContainer": [
         {
           "id": "aiFeedbackSidebar",
-          "name": "MCP 服务状态"
+          "name": "MCP 服务状态",
+          "type": "webview"
         }
       ]
     },

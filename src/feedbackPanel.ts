@@ -63,7 +63,7 @@ export class FeedbackPanel {
 
       const panel = vscode.window.createWebviewPanel(
         "aiFeedbackPanel",
-        "AI 反馈",
+        `AI 反馈 (${payload.requestId})`,
         column,
         {
           enableScripts: true
