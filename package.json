@@ -1,72 +1,122 @@
 {
-  "name": "ai-feedback-mcp",
-  "displayName": "AI Feedback MCP",
-  "description": "在 VS Code 中为 AI 提供 MCP 反馈工具的插件",
-  "version": "0.0.1",
-  "publisher": "your-name",
+  "name": "ai-weige",
+  "displayName": "ai伟哥",
+  "description": "ai伟哥 - 智能反馈工具，让 AI 在完成任务后等待您的反馈，掌控对话节奏",
+  "version": "1.0.0",
+  "publisher": "opensource",
+  "author": "EVILZIXIE",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/renqingfei/ai-viagra.git"
+    "url": ""
   },
-  "license": "MIT",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.80.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "mcp",
+    "ai",
+    "feedback",
+    "windsurf",
+    "cursor",
+    "infinite",
+    "dialog"
   ],
   "activationEvents": [
-    "onView:aiFeedbackSidebar",
-    "onCommand:aiFeedback.openPanel"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "aiFeedbackContainer",
-          "title": "AI Feedback",
-          "icon": "resources/feedback.svg"
+          "id": "infinite-dialog-sidebar",
+          "title": "ai伟哥",
+          "icon": "resources/icon.svg"
         }
       ]
     },
     "views": {
-      "aiFeedbackContainer": [
+      "infinite-dialog-sidebar": [
         {
-          "id": "aiFeedbackSidebar",
-          "name": "MCP 服务状态",
-          "type": "webview"
+          "type": "webview",
+          "id": "infiniteDialogView",
+          "name": "ai伟哥",
+          "icon": "resources/icon.svg"
         }
       ]
     },
     "commands": [
       {
-        "command": "aiFeedback.openPanel",
-        "title": "打开 AI 反馈面板"
+        "command": "infiniteDialog.openPanel",
+        "title": "ai伟哥: Open Panel",
+        "icon": "$(window)"
+      },
+      {
+        "command": "infiniteDialog.refresh",
+        "title": "ai伟哥: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "infiniteDialog.testFeedback",
+        "title": "ai伟哥: Test Feedback"
+      },
+      {
+        "command": "infiniteDialog.showStatus",
+        "title": "ai伟哥: Show Status"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "infiniteDialog.refresh",
+          "when": "view == infiniteDialogView",
+          "group": "navigation"
+        },
+        {
+          "command": "infiniteDialog.openPanel",
+          "when": "view == infiniteDialogView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ai伟哥",
+      "properties": {
+        "infiniteDialog.serverPort": {
+          "type": "number",
+          "default": 3456,
+          "description": "服务端口"
+        },
+        "infiniteDialog.autoConfigureRules": {
+          "type": "boolean",
+          "default": true,
+          "description": "自动配置全局规则"
+        }
+      }
+    }
   },
   "scripts": {
+    "vscode:prepublish": "npm run esbuild",
     "compile": "tsc -p ./",
+    "esbuild": "node esbuild.js",
     "watch": "tsc -watch -p ./",
-    "test": "echo no tests",
-    "mcp:build": "tsc -p mcp-server/tsconfig.json",
-    "build": "npm run compile && npm run mcp:build",
-    "package": "vsce package",
-    "vscode:prepublish": "npm run build"
+    "package": "vsce package --out ai-weige.vsix"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
-    "@types/node": "^18.0.0",
-    "@types/vscode": "^1.85.0",
-    "typescript": "^5.0.0",
-    "vsce": "^2.15.0"
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.21.0",
+    "esbuild": "^0.27.2",
+    "typescript": "^5.1.0"
   },
   "dependencies": {
-    "axios": "^1.7.0",
-    "@modelcontextprotocol/sdk": "^1.25.1",
-    "express": "^4.19.0",
-    "zod": "^4.2.1"
+    "mammoth": "^1.11.0",
+    "xlsx": "^0.18.5"
   }
 }
 

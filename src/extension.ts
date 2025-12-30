@@ -1,91 +1,51 @@
-import * as vscode from "vscode";
-import * as path from "path";
-import { spawn, ChildProcess } from "child_process";
-import { AiFeedbackViewProvider } from "./sidebarView";
-import { FeedbackPanel } from "./feedbackPanel";
-import { McpClient } from "./mcpClient";
+import * as vscode from 'vscode';
+import { MCPHttpServer } from './mcpHttpServer';
+import { SidebarProvider } from './sidebarProvider';
 
-let mcpClient: McpClient | undefined;
-let mcpProcess: ChildProcess | undefined;
-
-function startMcpProcess(
-  context: vscode.ExtensionContext,
-  statusProvider: AiFeedbackViewProvider
-) {
-  const serverScript = path.join(
-    context.extensionPath,
-    "mcp-server",
-    "dist",
-    "server.js"
-  );
-
-  const proc = spawn(process.execPath, [serverScript], {
-    cwd: path.join(context.extensionPath, "mcp-server"),
-    stdio: "ignore"
-  });
-
-  mcpProcess = proc;
-
-  proc.on("exit", code => {
-    const status =
-      typeof code === "number"
-        ? `MCP 进程已退出 (${code})`
-        : "MCP 进程已退出";
-    statusProvider.updateStatus(status);
-  });
-}
+let server: MCPHttpServer | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  const statusProvider = new AiFeedbackViewProvider(context);
-  vscode.window.registerWebviewViewProvider(
-    "aiFeedbackSidebar",
-    statusProvider
+  const viewProvider = new SidebarProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(SidebarProvider.viewType, viewProvider, {
+      webviewOptions: { retainContextWhenHidden: true },
+    })
   );
 
-  statusProvider.updateStatus("未连接");
+  const getPort = () => vscode.workspace.getConfiguration('infiniteDialog').get<number>('serverPort', 3456);
+  server = new MCPHttpServer(context.extensionUri, viewProvider);
+  context.subscriptions.push({ dispose: () => server?.stop() });
 
-  try {
-    startMcpProcess(context, statusProvider);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('infiniteDialog.showStatus', async () => {
+      const port = server?.getPort() ?? getPort();
+      const connections = server?.getConnectionCount() ?? 0;
+      void vscode.window.showInformationMessage(`ai伟哥: running on ${port}, connections: ${connections}`);
+    })
+  );
 
-    mcpClient = new McpClient({
-      onRequestFeedback: async payload => {
-        statusProvider.recordSessionStart(
-          `${payload.requestId} ${payload.aiOutput.slice(0, 80)}`
-        );
-        statusProvider.updateStatus("等待用户反馈");
-        const feedback = await FeedbackPanel.show(context, payload);
-        statusProvider.updateStatus("反馈已提交");
-        statusProvider.recordSessionCompleted();
-        return feedback;
-      },
-      onStatusChange: status => {
-        statusProvider.updateStatus(status);
-      }
-    });
+  context.subscriptions.push(
+    vscode.commands.registerCommand('infiniteDialog.refresh', async () => {
+      viewProvider.refresh();
+    })
+  );
 
-    context.subscriptions.push(
-      vscode.commands.registerCommand("aiFeedback.openPanel", async () => {
-        await FeedbackPanel.show(context, {
-          requestId: "manual",
-          aiOutput: "这是一个手动打开的示例，你可以在这里输入反馈。"
-        });
-      })
-    );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('infiniteDialog.openPanel', async () => {
+      await server?.showTestFeedbackPanel('ai伟哥');
+    })
+  );
 
-    mcpClient.connect().catch(err => {
-      console.error("连接 MCP 服务失败: ", err);
-      statusProvider.updateStatus("连接失败");
-    });
-  } catch (err) {
-    console.error("扩展初始化失败: ", err);
-    statusProvider.updateStatus("扩展初始化失败");
-  }
+  context.subscriptions.push(
+    vscode.commands.registerCommand('infiniteDialog.testFeedback', async () => {
+      const now = new Date().toISOString();
+      await server?.showTestFeedbackPanel(`test at ${now}`);
+    })
+  );
+
+  void server.start(getPort()).catch((err) => {
+    void vscode.window.showErrorMessage(`ai伟哥: 启动服务失败：${String(err)}`);
+  });
 }
 
-export function deactivate() {
-  mcpClient?.dispose();
-  if (mcpProcess) {
-    mcpProcess.kill();
-    mcpProcess = undefined;
-  }
-}
+export function deactivate() {}
