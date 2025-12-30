@@ -1,0 +1,71 @@
+{
+  "name": "ai-feedback-mcp",
+  "displayName": "AI Feedback MCP",
+  "description": "在 VS Code 中为 AI 提供 MCP 反馈工具的插件",
+  "version": "0.0.1",
+  "publisher": "your-name",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/renqingfei/ai-viagra.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:aiFeedbackSidebar",
+    "onCommand:aiFeedback.openPanel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiFeedbackContainer",
+          "title": "AI Feedback",
+          "icon": "resources/feedback.svg"
+        }
+      ]
+    },
+    "views": {
+      "aiFeedbackContainer": [
+        {
+          "id": "aiFeedbackSidebar",
+          "name": "MCP 服务状态"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "aiFeedback.openPanel",
+        "title": "打开 AI 反馈面板"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "echo no tests",
+    "mcp:build": "tsc -p mcp-server/tsconfig.json",
+    "build": "npm run compile && npm run mcp:build",
+    "package": "vsce package",
+    "vscode:prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.0.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "@modelcontextprotocol/sdk": "^1.25.1",
+    "express": "^4.19.0",
+    "zod": "^4.2.1"
+  }
+}
+

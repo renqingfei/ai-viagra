@@ -1,0 +1,6 @@
+{
+  "name": "ai-feedback-mcp-server",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/server.js"
+}
