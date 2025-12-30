@@ -28,4 +28,4 @@
 - 代码块会自动添加复制按钮，链接可点击打开浏览器
 
 调用示例：
-{"tool": "aiweige_open_feedback", "arguments": {"summary": "## 任务完成\n\n已完成以下工作：\n- 功能A\n- 功能B\n\n```python\nprint('Hello')\n```"}}
+{"tool": "infinite_dialog_feedback", "arguments": {"summary": "## 任务完成\n\n已完成以下工作：\n- 功能A\n- 功能B\n\n```python\nprint('Hello')\n```"}}
