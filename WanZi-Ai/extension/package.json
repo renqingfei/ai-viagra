@@ -1,0 +1,123 @@
+{
+  "name": "ai-echo",
+  "displayName": "丸子Ai",
+  "description": "丸子Ai - 智能反馈工具，让 AI 在完成任务后等待您的反馈，掌控对话节奏",
+  "version": "1.0.0",
+  "publisher": "opensource",
+  "author": "丸子团队",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "mcp",
+    "ai",
+    "feedback",
+    "windsurf",
+    "cursor",
+    "infinite",
+    "dialog"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "infinite-dialog-sidebar",
+          "title": "丸子Ai",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "infinite-dialog-sidebar": [
+        {
+          "type": "webview",
+          "id": "infiniteDialogView",
+          "name": "丸子Ai",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "infiniteDialog.openPanel",
+        "title": "丸子Ai: Open Panel",
+        "icon": "$(window)"
+      },
+      {
+        "command": "infiniteDialog.refresh",
+        "title": "丸子Ai: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "infiniteDialog.testFeedback",
+        "title": "丸子Ai: Test Feedback"
+      },
+      {
+        "command": "infiniteDialog.showStatus",
+        "title": "丸子Ai: Show Status"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "infiniteDialog.refresh",
+          "when": "view == infiniteDialogView",
+          "group": "navigation"
+        },
+        {
+          "command": "infiniteDialog.openPanel",
+          "when": "view == infiniteDialogView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "丸子Ai",
+      "properties": {
+        "infiniteDialog.serverPort": {
+          "type": "number",
+          "default": 3456,
+          "description": "服务端口"
+        },
+        "infiniteDialog.autoConfigureRules": {
+          "type": "boolean",
+          "default": true,
+          "description": "自动配置全局规则"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild",
+    "compile": "tsc -p ./",
+    "esbuild": "node esbuild.js",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --out AI-Echo.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.21.0",
+    "esbuild": "^0.27.2",
+    "javascript-obfuscator": "^5.1.0",
+    "typescript": "^5.1.0"
+  },
+  "dependencies": {
+    "mammoth": "^1.11.0",
+    "proxy-agent": "^6.3.0",
+    "xlsx": "^0.18.5"
+  }
+}

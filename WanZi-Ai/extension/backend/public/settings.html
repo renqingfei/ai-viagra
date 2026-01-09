@@ -1,0 +1,120 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>版本设置 - 丸子Ai 管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1a1a2e, #16213e); min-height: 100vh; color: #fff; }
+        .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+        .card { background: rgba(255,255,255,0.05); border-radius: 16px; padding: 30px; border: 1px solid rgba(255,255,255,0.1); }
+        h1 { font-size: 24px; margin-bottom: 30px; display: flex; align-items: center; gap: 10px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
+        input[type="text"], textarea { width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 14px; }
+        input[type="text"]:focus, textarea:focus { outline: none; border-color: #4da3ff; }
+        textarea { resize: vertical; min-height: 80px; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        input[type="checkbox"] { width: 20px; height: 20px; accent-color: #4da3ff; }
+        .btn { display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #4da3ff, #7c5cff); border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(77,163,255,0.4); }
+        .message { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
+        .message.success { background: rgba(34,197,94,0.2); border: 1px solid rgba(34,197,94,0.4); color: #22c55e; display: block; }
+        .message.error { background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #ef4444; display: block; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; }
+        .back-link:hover { color: #4da3ff; }
+        .hint { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+        .loading { opacity: 0.6; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← 返回管理后台</a>
+        <div class="card">
+            <h1>🔄 版本设置</h1>
+            
+            <div id="message" class="message"></div>
+            
+            <form id="settingsForm">
+                <div class="form-group">
+                    <label>最新版本号</label>
+                    <input type="text" id="latest_version" placeholder="例如: 2.0.0">
+                    <div class="hint">用户插件版本低于此版本时会提示更新</div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="force_update">
+                        <label for="force_update" style="margin-bottom: 0;">强制更新</label>
+                    </div>
+                    <div class="hint">开启后用户必须更新才能激活卡密</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>更新链接</label>
+                    <input type="text" id="update_url" placeholder="https://...">
+                    <div class="hint">点击"立即更新"后跳转的链接</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>更新说明</label>
+                    <textarea id="update_message" placeholder="本次更新内容..."></textarea>
+                    <div class="hint">可选，显示在更新提示中</div>
+                </div>
+                
+                <button type="submit" class="btn">💾 保存设置</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('settingsForm');
+        const messageEl = document.getElementById('message');
+
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/admin/settings');
+                const data = await res.json();
+                if (data.success && data.data) {
+                    document.getElementById('latest_version').value = data.data.latest_version || '2.0.0';
+                    document.getElementById('force_update').checked = data.data.force_update === '1';
+                    document.getElementById('update_url').value = data.data.update_url || '';
+                    document.getElementById('update_message').value = data.data.update_message || '';
+                }
+            } catch (e) {
+                console.error('加载设置失败', e);
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            form.classList.add('loading');
+            
+            try {
+                const res = await fetch('/api/admin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        latest_version: document.getElementById('latest_version').value,
+                        force_update: document.getElementById('force_update').checked,
+                        update_url: document.getElementById('update_url').value,
+                        update_message: document.getElementById('update_message').value
+                    })
+                });
+                const data = await res.json();
+                
+                messageEl.textContent = data.message || (data.success ? '保存成功' : '保存失败');
+                messageEl.className = 'message ' + (data.success ? 'success' : 'error');
+            } catch (e) {
+                messageEl.textContent = '请求失败: ' + e.message;
+                messageEl.className = 'message error';
+            }
+            
+            form.classList.remove('loading');
+        });
+
+        loadSettings();
+    </script>
+</body>
+</html>
