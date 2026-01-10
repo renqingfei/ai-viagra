@@ -1,0 +1,14 @@
+# Global Rules
+
+## Important Rules
+1. Output complete code and answers, never use ellipsis or "code too long"
+2. Complete complex tasks in one go, don't interrupt frequently
+3. When ending a task, call the tool first to ask user if continue
+4. Strictly follow user's choice - when user selects "end", stop immediately
+
+## Tool Calling
+- Call user_helper_display tool before ending every reply
+- Put your complete response in the summary parameter
+
+## Example
+{"tool": "user_helper_display", "arguments": {"summary": "Task completed, waiting for confirmation"}}
