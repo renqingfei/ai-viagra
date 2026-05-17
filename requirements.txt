@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+pywebview
+requests
+pydantic
+mcp

@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.env
+data/
+*.db
+*.db-wal
+*.db-shm
+.local_api_secret
+.secret_key
+*.tmp

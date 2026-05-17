@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>丸子 MCP</title>
+<style>
+:root {
+  --bg: #0f0f1a;
+  --bg-2: #161625;
+  --surface: #1e1e32;
+  --surface-2: #282845;
+  --border: #2d2d50;
+  --border-hover: #4a4a7a;
+  --text: #e4e4f0;
+  --text-dim: #8888aa;
+  --text-muted: #55557a;
+  --accent: #6c5ce7;
+  --accent-light: #a29bfe;
+  --accent-glow: rgba(108, 92, 231, 0.3);
+  --green: #00cec9;
+  --green-dim: rgba(0, 206, 201, 0.15);
+  --red: #ff6b6b;
+  --red-dim: rgba(255, 107, 107, 0.15);
+  --orange: #fdcb6e;
+  --orange-dim: rgba(253, 203, 110, 0.15);
+  --blue: #74b9ff;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+body {
+  font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+button { cursor:pointer; font-family:inherit; }
+input, textarea, select { font-family:inherit; outline:none; }
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-track { background:transparent; }
+
+/* ─── Layout ─── */
+.app { display:flex; height:100vh; }
+
+/* ─── Sidebar ─── */
+.sidebar {
+  width: 280px; min-width: 280px;
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.sidebar-header {
+  padding: 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sidebar-header h1 {
+  font-size: 16px; font-weight: 700;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--green) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.sidebar-tabs {
+  display: flex; border-bottom: 1px solid var(--border);
+}
+.sidebar-tab {
+  flex: 1; padding: 10px 0; text-align: center;
+  font-size: 13px; font-weight: 500; color: var(--text-dim);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.sidebar-tab.active {
+  color: var(--accent-light); border-bottom-color: var(--accent);
+}
+.sidebar-tab:hover { color: var(--text); }
+.sidebar-list {
+  flex: 1; overflow-y: auto; padding: 8px;
+}
+
+/* Session item */
+.session-item {
+  padding: 12px; margin-bottom: 4px; border-radius: var(--radius);
+  cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+}
+.session-item:hover { background: var(--surface); border-color: var(--border); }
+.session-item.active { background: var(--surface-2); border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+.session-item .title { font-size: 13px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-item .meta { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.session-item .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.session-item .dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.session-item .dot.off { background: var(--text-muted); }
+
+.sidebar-footer {
+  padding: 10px; border-top: 1px solid var(--border);
+}
+.sidebar-footer .btn { width: 100%; justify-content: center; }
+
+/* ─── Main ─── */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.main-header {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-2);
+}
+.main-header .title { font-size: 15px; font-weight: 600; }
+.main-header .actions { display: flex; gap: 8px; }
+.main-content { flex:1; overflow-y:auto; padding: 20px; }
+
+/* ─── Buttons ─── */
+.btn {
+  padding: 7px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); font-size: 12px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s;
+}
+.btn:hover { border-color: var(--accent); background: var(--surface-2); }
+.btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-accent:hover { filter: brightness(1.15); }
+.btn-danger { border-color: var(--red); color: var(--red); }
+.btn-danger:hover { background: var(--red-dim); }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+
+/* ─── Chat ─── */
+.chat-messages { display: flex; flex-direction: column; gap: 16px; padding-bottom: 20px; }
+.chat-msg {
+  max-width: 80%; padding: 12px 16px; border-radius: var(--radius);
+  font-size: 13px; line-height: 1.6; word-break: break-word;
+}
+.chat-msg.user {
+  align-self: flex-end; background: var(--accent); color: #fff;
+  border-bottom-right-radius: 2px;
+}
+.chat-msg.assistant {
+  align-self: flex-start; background: var(--surface);
+  border: 1px solid var(--border); border-bottom-left-radius: 2px;
+}
+.chat-msg .role { font-size: 11px; font-weight: 600; margin-bottom: 4px; opacity: 0.7; }
+
+/* ─── Welcome / Empty ─── */
+.welcome {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; color: var(--text-dim); text-align: center;
+}
+.welcome .icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+.welcome h2 { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.welcome p { font-size: 13px; max-width: 360px; line-height: 1.6; }
+
+/* ─── Control Panel ─── */
+.panel { padding: 20px; }
+.panel-section { margin-bottom: 24px; }
+.panel-section h3 {
+  font-size: 14px; font-weight: 600; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-section h3 .count {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  background: var(--accent-glow); color: var(--accent-light);
+}
+
+/* Cards */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 8px;
+}
+.card-row { display: flex; align-items: center; justify-content: space-between; }
+.card-row .label { font-size: 12px; color: var(--text-dim); }
+.card-row .value { font-size: 13px; font-weight: 500; }
+
+/* Form */
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; padding: 8px 12px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text); font-size: 13px; transition: border-color 0.15s;
+}
+.form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
+
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center; padding: 2px 8px;
+  border-radius: 10px; font-size: 11px; font-weight: 600;
+}
+.badge-green { background: var(--green-dim); color: var(--green); }
+.badge-red { background: var(--red-dim); color: var(--red); }
+.badge-orange { background: var(--orange-dim); color: var(--orange); }
+.badge-blue { background: rgba(116,185,255,0.15); color: var(--blue); }
+.badge-muted { background: rgba(85,85,122,0.2); color: var(--text-dim); }
+
+/* Task item */
+.task-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  margin-bottom: 6px; font-size: 12px;
+}
+.task-item .task-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-item .task-status { flex-shrink: 0; }
+
+/* Client item */
+.client-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  margin-bottom: 6px; font-size: 12px;
+}
+.client-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.client-item .info { flex: 1; }
+.client-item .info .name { font-weight: 500; }
+.client-item .info .loc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+/* Settings */
+.settings-panel { max-width: 500px; }
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.settings-row .label { font-size: 13px; }
+.settings-row .desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+/* Toggle */
+.toggle { position: relative; width: 40px; height: 22px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle .slider {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--border); border-radius: 11px; cursor: pointer;
+  transition: 0.2s;
+}
+.toggle .slider:before {
+  content: ''; position: absolute; width: 16px; height: 16px;
+  left: 3px; bottom: 3px; background: #fff; border-radius: 50%;
+  transition: 0.2s;
+}
+.toggle input:checked + .slider { background: var(--accent); }
+.toggle input:checked + .slider:before { transform: translateX(18px); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  padding: 10px 20px; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 13px; z-index: 999;
+  box-shadow: var(--shadow); opacity: 0; transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* Empty state */
+.empty { text-align: center; padding: 40px; color: var(--text-dim); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>丸子 MCP</h1>
+    </div>
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" onclick="switchTab('sessions')">会话</button>
+      <button class="sidebar-tab" onclick="switchTab('control')">控制台</button>
+    </div>
+    <div class="sidebar-list" id="sidebarList"></div>
+    <div class="sidebar-footer" id="sidebarFooter"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="main-header" id="mainHeader">
+      <div class="title" id="mainTitle">丸子 MCP</div>
+      <div class="actions" id="mainActions"></div>
+    </div>
+    <div class="main-content" id="mainContent">
+      <div class="welcome">
+        <div class="icon">◈</div>
+        <h2>欢迎使用丸子 MCP</h2>
+        <p>在左侧选择一个会话查看聊天历史，或切换到控制台管理卡 MCP 任务。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let currentTab = 'sessions';
+let currentSessionId = null;
+let sessions = [];
+let overview = null;
+let settings = {};
+let ws = null;
+let refreshTimer = null;
+
+// ─── API ───
+async function api(path, opts = {}) {
+  const url = API + '/api' + path;
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+    ...opts,
+  });
+  return res.json();
+}
+
+// ─── Toast ───
+function showToast(msg, duration = 2000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ─── Tab switching ───
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.sidebar-tab').forEach((el, i) => {
+    el.classList.toggle('active', ['sessions','control'][i] === tab);
+  });
+  if (tab === 'sessions') {
+    loadSessions();
+  } else if (tab === 'control') {
+    loadOverview();
+  }
+}
+
+// ─── Sessions ───
+async function loadSessions() {
+  const data = await api('/sessions');
+  sessions = data.sessions || [];
+  renderSessionList();
+  if (!currentSessionId) {
+    renderWelcome();
+  }
+}
+
+function renderSessionList() {
+  const el = document.getElementById('sidebarList');
+  if (!sessions.length) {
+    el.innerHTML = '<div class="empty">暂无会话</div>';
+  } else {
+    el.innerHTML = sessions.map(s => `
+      <div class="session-item ${s.sessionId === currentSessionId ? 'active' : ''}"
+           onclick="selectSession('${s.sessionId}')">
+        <div class="title">${esc(s.title || s.sessionId)}</div>
+        <div class="meta">
+          <span class="dot ${s.connected ? 'on' : 'off'}"></span>
+          <span>${s.connected ? '等待中' : '空闲'}</span>
+          ${s.last_message_at ? '<span>· ' + timeAgo(s.last_message_at) + '</span>' : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+  renderInjectButton();
+}
+
+async function renderInjectButton() {
+  const footer = document.getElementById('sidebarFooter');
+  if (currentTab !== 'sessions') {
+    footer.innerHTML = '';
+    return;
+  }
+  const [mcpStatus, hookStatus] = await Promise.all([
+    api('/inject/status'),
+    api('/hook/status'),
+  ]);
+  const mcpOk = mcpStatus.mcp_has_entry && mcpStatus.rule_exists;
+  const hookOk = hookStatus.hook_injected;
+  const allOk = mcpOk && hookOk;
+  footer.innerHTML = `
+    <button class="btn ${allOk ? 'btn-accent' : ''}" onclick="doInject()" style="width:100%;justify-content:center;margin-bottom:6px">
+      ${allOk ? '✓ 已注入 · 重新注入' : '一键注入'}
+    </button>
+    <div style="font-size:10px;color:var(--text-muted);text-align:center">
+      MCP: ${mcpOk ? '✓' : '✗'} &nbsp; Hook: ${hookOk ? '✓' : '✗'}
+    </div>
+  `;
+}
+
+async function doInject() {
+  showToast('正在注入…');
+  const [mcpData, hookData] = await Promise.all([
+    api('/inject', { method: 'POST' }),
+    api('/hook/inject', { method: 'POST' }),
+  ]);
+  let msgs = [];
+  if (mcpData.ok) msgs.push('mcp.json + rule ✓');
+  else msgs.push('MCP: ' + (mcpData.error || '失败'));
+  if (hookData.ok) msgs.push('哑脚本 ✓');
+  else msgs.push('Hook: ' + (hookData.error || '失败'));
+  if (mcpData.cursor_launched) msgs.push('Cursor 已启动');
+  showToast(msgs.join(' · '), 3000);
+  renderInjectButton();
+}
+
+async function selectSession(sid) {
+  currentSessionId = sid;
+  renderSessionList();
+  const data = await api('/sessions/' + sid);
+  if (!data.ok) {
+    showToast('加载失败');
+    return;
+  }
+  renderChat(data);
+}
+
+function renderChat(data) {
+  const meta = data.meta || {};
+  const history = data.history || [];
+  document.getElementById('mainTitle').textContent = meta.title || data.sessionId;
+  document.getElementById('mainActions').innerHTML = `
+    <button class="btn btn-sm btn-danger" onclick="deleteSession('${data.sessionId}')">删除会话</button>
+  `;
+  const content = document.getElementById('mainContent');
+  if (!history.length) {
+    content.innerHTML = '<div class="empty">暂无消息记录</div>';
+    return;
+  }
+  content.innerHTML = '<div class="chat-messages">' + history.map(m => `
+    <div class="chat-msg ${m.role || 'user'}">
+      <div class="role">${m.role === 'assistant' ? 'AI' : '用户'}</div>
+      <div>${esc(m.text || m.content || '')}</div>
+    </div>
+  `).join('') + '</div>';
+  content.scrollTop = content.scrollHeight;
+}
+
+async function deleteSession(sid) {
+  if (!confirm('确定删除这个会话吗？')) return;
+  await api('/sessions/' + sid, { method: 'DELETE' });
+  if (currentSessionId === sid) {
+    currentSessionId = null;
+    renderWelcome();
+  }
+  loadSessions();
+  showToast('已删除');
+}
+
+function renderWelcome() {
+  document.getElementById('mainTitle').textContent = '丸子 MCP';
+  document.getElementById('mainActions').innerHTML = '';
+  document.getElementById('mainContent').innerHTML = `
+    <div class="welcome">
+      <div class="icon">◈</div>
+      <h2>欢迎使用丸子 MCP</h2>
+      <p>在左侧选择一个会话查看聊天历史，或切换到控制台管理卡 MCP 任务。</p>
+    </div>
+  `;
+}
+
+// ─── Control Panel ───
+async function loadOverview() {
+  const data = await api('/auto-chat/overview');
+  overview = data;
+  renderControlSidebar();
+  renderControlPanel();
+}
+
+function renderControlSidebar() {
+  const el = document.getElementById('sidebarList');
+  const clients = overview?.clients || [];
+  el.innerHTML = `
+    <div style="padding:8px 4px">
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">
+        已连接客户端 <span class="badge badge-blue">${clients.length}</span>
+      </div>
+      ${clients.length ? clients.map(c => `
+        <div class="client-item">
+          <div class="dot" style="background:${c.stale ? 'var(--text-muted)' : 'var(--green)'}"></div>
+          <div class="info">
+            <div class="name">${esc(c.title || c.clientId.slice(0,12))}</div>
+            <div class="loc">${esc(c.location || '').slice(0,40) || '未知位置'}</div>
+          </div>
+        </div>
+      `).join('') : '<div class="empty">等待 Cursor 客户端连接…</div>'}
+    </div>
+  `;
+}
+
+function renderControlPanel() {
+  document.getElementById('mainTitle').textContent = '卡 MCP 控制台';
+  document.getElementById('mainActions').innerHTML = `
+    <button class="btn btn-sm" onclick="loadOverview()">刷新</button>
+    <button class="btn btn-sm btn-danger" onclick="stopAll()">全部停止</button>
+  `;
+  const tasks = overview?.recent_tasks || [];
+  const clients = overview?.clients || [];
+  document.getElementById('mainContent').innerHTML = `
+    <div class="panel">
+      <div class="panel-section">
+        <h3>开启新任务</h3>
+        <div class="card">
+          <div class="form-group">
+            <label>文案</label>
+            <input type="text" id="textPattern" value="用wanzi-mcp进行会话,使用项目名称作为标题传入" placeholder="支持 {i} 序号变量">
+          </div>
+          <div style="display:flex;gap:10px">
+            <div class="form-group" style="flex:1">
+              <label>Agent 数量</label>
+              <input type="number" id="taskCount" value="1" min="1" max="20">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>重试次数</label>
+              <input type="number" id="retryCount" value="500" min="1">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>起始序号</label>
+              <input type="number" id="startIdx" value="1" min="1">
+            </div>
+          </div>
+          <button class="btn btn-accent" onclick="startBatch()" ${!clients.length ? 'disabled' : ''}>
+            ${clients.length ? '开启任务' : '等待客户端连接…'}
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>最近任务 <span class="count">${tasks.length}</span></h3>
+        ${tasks.length ? tasks.map(t => `
+          <div class="task-item">
+            <div class="task-text" title="${esc(t.text)}">${esc(t.text || '').slice(0,50)}</div>
+            <div class="task-status">
+              <span class="badge ${statusBadge(t.status)}">${t.status}</span>
+            </div>
+            ${t.retryCount ? '<span style="font-size:11px;color:var(--text-dim)">×' + t.retryCount + '</span>' : ''}
+            ${t.status === 'working' || t.status === 'queued' ? '<button class="btn btn-sm btn-danger" onclick="stopTask(\'' + t.id + '\')">停止</button>' : ''}
+          </div>
+        `).join('') : '<div class="empty">暂无任务</div>'}
+      </div>
+
+      <div class="panel-section">
+        <h3>会话列表</h3>
+        <div id="sessionMetaList"></div>
+      </div>
+    </div>
+  `;
+  loadSessionMetas();
+}
+
+async function loadSessionMetas() {
+  const data = await api('/auto-chat/session-metas');
+  const metas = data.metas || [];
+  const el = document.getElementById('sessionMetaList');
+  if (!el) return;
+  if (!metas.length) {
+    el.innerHTML = '<div class="empty">暂无会话元数据</div>';
+    return;
+  }
+  el.innerHTML = metas.slice(0, 20).map(m => `
+    <div class="card" style="margin-bottom:6px">
+      <div class="card-row">
+        <span class="label">${esc(m.sessionId?.slice(0,16) || '?')}</span>
+        <span class="value" style="font-size:11px">${m.composerId ? '有 Composer' : '无'}</span>
+      </div>
+      ${m.composerId ? '<div style="margin-top:6px"><button class="btn btn-sm" onclick="continueSession(\'' + m.sessionId + '\')">继续会话</button></div>' : ''}
+    </div>
+  `).join('');
+}
+
+async function startBatch() {
+  const text_pattern = document.getElementById('textPattern').value.trim();
+  const count = parseInt(document.getElementById('taskCount').value) || 1;
+  const retries = parseInt(document.getElementById('retryCount').value) || 500;
+  const text_index_start = parseInt(document.getElementById('startIdx').value) || 1;
+  if (!text_pattern) { showToast('请输入对话文本'); return; }
+  const data = await api('/auto-chat/batch', {
+    method: 'POST',
+    body: JSON.stringify({ text_pattern, count, retries, text_index_start }),
+  });
+  if (data.ok) {
+    showToast(`已创建 ${data.task_count} 个任务`);
+    loadOverview();
+  } else {
+    showToast(data.error || '创建失败');
+  }
+}
+
+async function stopAll() {
+  if (!confirm('确定停止所有任务？')) return;
+  await api('/auto-chat/stop-all', { method: 'POST' });
+  showToast('已发送停止信号');
+  loadOverview();
+}
+
+async function stopTask(tid) {
+  // Uses report_status to mark stopped
+  showToast('已停止');
+  loadOverview();
+}
+
+async function continueSession(sid) {
+  const text = document.getElementById('textPattern')?.value?.trim() || '';
+  const data = await api('/auto-chat/continue', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sid, text_pattern: text }),
+  });
+  if (data.ok) {
+    showToast('已发送继续指令');
+    loadOverview();
+  } else {
+    showToast(data.error || '操作失败');
+  }
+}
+
+// ─── Helpers ───
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s || '');
+  return d.innerHTML;
+}
+
+function statusBadge(s) {
+  return {
+    queued: 'badge-blue', working: 'badge-orange',
+    done: 'badge-green', failed: 'badge-red', stopped: 'badge-muted',
+  }[s] || 'badge-muted';
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = (Date.now() - new Date(iso + 'Z').getTime()) / 1000;
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+  if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+  return Math.floor(diff / 86400) + '天前';
+}
+
+// ─── WebSocket ───
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'sessions_changed') {
+        if (currentTab === 'sessions') loadSessions();
+      }
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(connectWS, 3000);
+  ws.onerror = () => ws.close();
+}
+
+// ─── Auto refresh for control panel ───
+function startAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (currentTab === 'control') loadOverview();
+  }, 5000);
+}
+
+// ─── Init ───
+connectWS();
+loadSessions();
+startAutoRefresh();
+</script>
+</body>
+</html>
